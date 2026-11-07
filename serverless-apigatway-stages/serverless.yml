@@ -1,0 +1,102 @@
+plugins:
+  - serverless-domain-manager
+
+
+service: serverless-apigatway-stages
+# app and org for use with dashboard.serverless.com
+app: your-app-name
+#org: your-org-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+custom:
+  customDomain:
+    domainName: api.simemap.com
+    basePath: 'tutorial'
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+
+provider:
+  name: aws
+  stage: ${opt:stage}
+  region: us-east-2
+  runtime: nodejs12.x
+
+
+# you can define service wide environment variables here
+#  environment:
+#    variable1: value1
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - http:
+          path: users/create
+          method: get
+
+#    Define function environment variables here
+#    environment:
+#      variable2: value2
+
+# you can add CloudFormation resource templates here
+#resources:
+#  Resources:
+#    NewResource:
+#      Type: AWS::S3::Bucket
+#      Properties:
+#        BucketName: my-new-bucket
+#  Outputs:
+#     NewOutput:
+#       Description: "Description for the output"
+#       Value: "Some output value"
+
+
+resources:
+  Resources:
+    ApiGatewayRestApi:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: ${self:service}
+        Body: ${file(swagger.yaml)}
+  
+
+ApiGatewayDeploymentDev:
+  Type: AWS::ApiGateway::Deployment
+  Properties:
+    RestApiId:
+      Ref: ApiGatewayRestApi
+    Description: 'Dev deployment'
+
+
+ApiGatewayDeploymentProd:
+  Type: AWS::ApiGateway::Deployment
+  Properties:
+    RestApiId:
+      Ref: ApiGatewayRestApi
+    Description: 'Prod Deployment'
+
+ApiGatewayStageDev:
+    Type: 'AWS::ApiGateway::Stage'
+    Properties:
+      StageName: dev
+      Description: Dev Stage
+      RestApiId: 
+        Ref: ApiGatewayRestApi
+      DeploymentId: 
+        Ref: ApiGatewayDeploymentDev
+      Variables:
+        "Stage": "dev"
+ApiGatewayStageProd:
+    Type: 'AWS::ApiGateway::Stage'
+    Properties:
+      StageName: prod
+      Description: Prod Stage
+      RestApiId: 
+        Ref: ApiGatewayRestApi
+      DeploymentId: 
+        Ref: ApiGatewayDeploymentProd
+      Variables:
+        "Stage": "prod"
